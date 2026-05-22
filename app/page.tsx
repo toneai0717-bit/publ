@@ -13,6 +13,7 @@ export default function Home() {
   const [isComplete, setIsComplete] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [listening, setListening] = useState(false);
+  const [hasSavedSession, setHasSavedSession] = useState(false);
   const [toast, setToast] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const lastAiRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,32 @@ export default function Home() {
       container.scrollTop = el.offsetTop - container.offsetTop - 16;
     }
   }, [messages]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("publ_session");
+    if (saved) setHasSavedSession(true);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("publ_session", JSON.stringify({ messages, isComplete }));
+    }
+  }, [messages, isComplete]);
+
+  function loadSession() {
+    const saved = localStorage.getItem("publ_session");
+    if (!saved) return;
+    const { messages: savedMessages, isComplete: savedComplete } = JSON.parse(saved);
+    setMessages(savedMessages);
+    setIsComplete(savedComplete);
+    setScreen("interview");
+    setHasSavedSession(false);
+  }
+
+  function clearSession() {
+    localStorage.removeItem("publ_session");
+    setHasSavedSession(false);
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -173,6 +200,8 @@ export default function Home() {
     setIsComplete(false);
     setManuscript("");
     setInput("");
+    localStorage.removeItem("publ_session");
+    setHasSavedSession(false);
   }
 
   return (
@@ -198,6 +227,21 @@ export default function Home() {
       {/* Top screen */}
       {screen === "top" && (
         <div className="min-h-[calc(100vh-52px)] bg-stone-900 text-white flex flex-col">
+
+          {/* 続きから再開バナー */}
+          {hasSavedSession && (
+            <div className="bg-amber-500/20 border-b border-amber-500/30 px-6 py-3 flex items-center justify-between">
+              <p className="text-amber-300 text-sm font-semibold">💾 前回の途中から再開できます</p>
+              <div className="flex gap-3">
+                <button onClick={loadSession} className="bg-amber-500 text-stone-900 font-bold text-xs px-4 py-2 rounded-lg hover:bg-amber-400 transition-colors">
+                  続きから再開
+                </button>
+                <button onClick={clearSession} className="text-stone-500 text-xs hover:text-stone-300 transition-colors">
+                  削除
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Hero */}
           <div className="flex flex-col items-center text-center px-8 py-24 max-w-3xl mx-auto w-full">
