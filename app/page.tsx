@@ -12,9 +12,11 @@ export default function Home() {
   const [manuscript, setManuscript] = useState("");
   const [isComplete, setIsComplete] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  const [listening, setListening] = useState(false);
   const [toast, setToast] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const lastAiRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     if (lastAiRef.current && chatRef.current) {
@@ -27,6 +29,45 @@ export default function Home() {
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 4000);
+  }
+
+  function toggleListening() {
+    const SpeechRecognition = (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition }).SpeechRecognition || (window as Window & { webkitSpeechRecognition?: typeof window.SpeechRecognition }).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      showToast("このブラウザは音声入力に対応していません");
+      return;
+    }
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ja-JP";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+
+    recognition.onerror = () => {
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
   }
 
   async function startInterview() {
@@ -248,17 +289,25 @@ export default function Home() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     rows={2}
-                    placeholder="回答を入力してください..."
-                    className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-amber-400 transition-colors"
+                    placeholder={listening ? "🎤 話してください..." : "回答を入力してください..."}
+                    className={`flex-1 border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none transition-colors ${listening ? "border-red-400 bg-red-50 focus:border-red-400" : "border-stone-200 focus:border-amber-400"}`}
                     disabled={loading}
                   />
-                  <button
-                    onClick={sendMessage}
-                    disabled={!input.trim() || loading}
-                    className="bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold px-5 rounded-xl disabled:opacity-30 transition-colors text-sm"
-                  >
-                    送信
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={toggleListening}
+                      className={`rounded-xl px-4 py-2 font-bold text-sm transition-colors ${listening ? "bg-red-500 hover:bg-red-400 text-white animate-pulse" : "bg-stone-200 hover:bg-stone-300 text-stone-600"}`}
+                    >
+                      {listening ? "⏹" : "🎤"}
+                    </button>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!input.trim() || loading}
+                      className="bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold px-4 py-2 rounded-xl disabled:opacity-30 transition-colors text-sm"
+                    >
+                      送信
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={async () => {
