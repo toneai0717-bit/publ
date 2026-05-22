@@ -17,6 +17,7 @@ export default function Home() {
   const chatRef = useRef<HTMLDivElement>(null);
   const lastAiRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<unknown>(null);
+  const finalTranscriptRef = useRef<string>("");
 
   useEffect(() => {
     if (lastAiRef.current && chatRef.current) {
@@ -42,6 +43,7 @@ export default function Home() {
     if (listening) {
       (recognitionRef.current as { stop: () => void })?.stop();
       setListening(false);
+      finalTranscriptRef.current = "";
       return;
     }
 
@@ -52,11 +54,19 @@ export default function Home() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
-      let transcript = "";
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+      let interim = "";
+      let final = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
       }
-      setInput(transcript);
+      if (final) {
+        finalTranscriptRef.current += final;
+      }
+      setInput(finalTranscriptRef.current + interim);
     };
 
     recognition.onerror = () => {
