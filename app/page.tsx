@@ -16,7 +16,7 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const lastAiRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<unknown>(null);
 
   useEffect(() => {
     if (lastAiRef.current && chatRef.current) {
@@ -39,7 +39,7 @@ export default function Home() {
     }
 
     if (listening) {
-      recognitionRef.current?.stop();
+      (recognitionRef.current as { stop: () => void })?.stop();
       setListening(false);
       return;
     }
@@ -65,7 +65,7 @@ export default function Home() {
       setListening(false);
     };
 
-    recognitionRef.current = recognition;
+    recognitionRef.current = recognition as unknown;
     recognition.start();
     setListening(true);
   }
