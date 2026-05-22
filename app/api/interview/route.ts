@@ -52,11 +52,15 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
+    const actualMessages = messages.length === 0
+      ? [{ role: "user" as const, content: "インタビューを始めてください。" }]
+      : messages;
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      messages,
+      messages: actualMessages,
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
