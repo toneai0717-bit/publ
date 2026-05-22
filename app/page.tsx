@@ -11,6 +11,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [manuscript, setManuscript] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [toast, setToast] = useState("");
   const chatRef = useRef<HTMLDivElement>(null);
   const lastAiRef = useRef<HTMLDivElement>(null);
@@ -240,22 +241,48 @@ export default function Home() {
                 📖 原稿を生成する →
               </button>
             ) : (
-              <div className="flex gap-2">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  rows={2}
-                  placeholder="回答を入力してください..."
-                  className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-amber-400 transition-colors"
-                  disabled={loading}
-                />
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    rows={2}
+                    placeholder="回答を入力してください..."
+                    className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-amber-400 transition-colors"
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!input.trim() || loading}
+                    className="bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold px-5 rounded-xl disabled:opacity-30 transition-colors text-sm"
+                  >
+                    送信
+                  </button>
+                </div>
                 <button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || loading}
-                  className="bg-amber-500 hover:bg-amber-400 text-stone-900 font-bold px-5 rounded-xl disabled:opacity-30 transition-colors text-sm"
+                  onClick={async () => {
+                    const lastAiMsg = [...messages].reverse().find(m => m.role === "assistant");
+                    if (!lastAiMsg) return;
+                    setSuggesting(true);
+                    try {
+                      const res = await fetch("/api/suggest", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lastQuestion: lastAiMsg.content, messages }),
+                      });
+                      const data = await res.json();
+                      if (data.suggestion) setInput(data.suggestion);
+                    } catch {
+                      showToast("サンプル生成に失敗しました");
+                    } finally {
+                      setSuggesting(false);
+                    }
+                  }}
+                  disabled={suggesting || loading}
+                  className="text-xs text-stone-400 hover:text-amber-500 transition-colors disabled:opacity-30 text-left"
                 >
-                  送信
+                  {suggesting ? "生成中..." : "💡 回答例を生成"}
                 </button>
               </div>
             )}
